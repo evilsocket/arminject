@@ -4,7 +4,10 @@ ARM Inject
 An application to dynamically inject a shared object into a running process on
 ARM architectures and hook API calls.
 
-Read more on [Dynamically inject a shared library into a running process on Android/ARM](http://www.evilsocket.net/2015/05/01/dynamically-inject-a-shared-library-into-a-running-process-on-androidarm/).
+Read more on:
+
+- [Dynamically inject a shared library into a running process on Android/ARM](http://www.evilsocket.net/2015/05/01/dynamically-inject-a-shared-library-into-a-running-process-on-androidarm/).
+- [Android Native API Hooking with Library Injection and ELF Introspection](http://www.evilsocket.net/2015/05/04/android-native-api-hooking-with-library-injecto/)
 
 ## How to Test
 
