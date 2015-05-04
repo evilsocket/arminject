@@ -1,35 +1,23 @@
-ifndef ANDROID_SYSROOT
-SYSROOT  = $(HOME)/android/ndk/platforms/android-18/arch-arm/
-else
-SYSROOT  = $(ANDROID_SYSROOT)
-endif
+SUBDIRS=injector libhook
 
-ifndef ANDROID_STLPORT_INCLUDES
-STLPORT_INC = $(HOME)/android/ndk/sources/cxx-stl/stlport/stlport/
-else
-STLPORT_INC = $(ANDROID_STLPORT_INCLUDES)
-endif
+PROCESS=com.android.chrome
+ACTIVITY=com.google.android.apps.chrome.Main
 
-ifndef ANDROID_STLPORT_LIBS
-STLPORT_LIBS = $(HOME)/android/ndk/sources/cxx-stl/stlport/libs/armeabi/
-else
-STLPORT_LIBS = $(ANDROID_STLPORT_LIBS)
-endif
-
-PREFIX     = arm-linux-androideabi-
-
-CXX        = $(PREFIX)g++
-
-CXXFLAGS   = -I$(STLPORT_INC) -L$(STLPORT_LIBS) -w -O3 -fPIC -fPIE -fpermissive -pie --sysroot $(SYSROOT)
-
-MAIN_SRCS = main.cpp
-MAIN_OBJS = $(MAIN_SRCS:.cpp=.o)
-
-all: $(MAIN_OBJS)
-	$(CXX) $(CXXFLAGS) -o arm_inject $(MAIN_OBJS) -lstlport_static
-
-%.o: %.cpp
-	$(CXX) $(CXXFLAGS) -c -o $@ $<
+all:
+	for d in $(SUBDIRS); do [ -d $$d ] && $(MAKE) -C $$d; done
 
 clean:
-	-rm -f *.o arm_inject
+	for d in $(SUBDIRS); do [ -d $$d ] && $(MAKE) -C $$d clean; done
+
+test: all
+	@echo "\n\n@ Preparing for testing ...\n"
+	@adb push injector/injector /data/local/tmp/
+	@adb push libhook/libhook.so /data/local/tmp/
+	@adb shell chmod 777 /data/local/tmp/injector
+	@echo "@ Attaching to process $(PROCESS) ..."
+	@adb logcat -c
+	@adb shell su -c am start $(PROCESS)/$(ACTIVITY)
+	@sleep 2
+	@adb shell su 0 setenforce 0
+	@adb shell 'su -c "/data/local/tmp/injector `pidof $(PROCESS)` /data/local/tmp/libhook.so"'
+	@adb logcat | grep HOOK

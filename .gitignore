@@ -1,2 +1,3 @@
 *.o
-arm_inject
+*.so
+injector

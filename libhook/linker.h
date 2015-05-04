@@ -26,49 +26,72 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-#include "traced.hpp"
+#ifndef LINKER_H_
+#define LINKER_H_
 
-int usage( char *argvz ){
-    printf( "Usage: %s <pid> <library>\n", argvz );
-    return 1;
-}
+#include <elf.h>
 
-int main( int argc, char **argv )
+#define ANDROID_ARM_LINKER 1
+
+#define SOINFO_NAME_LEN 128
+
+struct link_map
 {
-    if( argc < 3 ){
-        return usage(argv[0]);
-    }
+    uintptr_t l_addr;
+    char * l_name;
+    uintptr_t l_ld;
+    struct link_map * l_next;
+    struct link_map * l_prev;
+};
 
-    pid_t pid = atoi(argv[1]);
-    if( pid == 0 ){
-        fprintf( stderr, "Invaid PID %s\n", argv[1] );
-        return 1;
-    }
+struct soinfo
+{
+    const char name[SOINFO_NAME_LEN];
+    Elf32_Phdr *phdr;
+    int phnum;
+    unsigned entry;
+    unsigned base;
+    unsigned size;
+    int unused;  // DO NOT USE, maintained for compatibility.
+    unsigned *dynamic;
+    unsigned wrprotect_start;
+    unsigned wrprotect_end;
+    struct soinfo *next;
+    unsigned flags;
+    const char *strtab;
+    Elf32_Sym *symtab;
+    unsigned nbucket;
+    unsigned nchain;
+    unsigned *bucket;
+    unsigned *chain;
+    unsigned *plt_got;
+    Elf32_Rel *plt_rel;
+    unsigned plt_rel_count;
+    Elf32_Rel *rel;
+    unsigned rel_count;
+    unsigned *preinit_array;
+    unsigned preinit_array_count;
+    unsigned *init_array;
+    unsigned init_array_count;
+    unsigned *fini_array;
+    unsigned fini_array_count;
+    void (*init_func)(void);
+    void (*fini_func)(void);
+#ifdef ANDROID_ARM_LINKER
+    /* ARM EABI section used for stack unwinding. */
+    unsigned *ARM_exidx;
+    unsigned ARM_exidx_count;
+#endif
+    unsigned refcount;
+    struct link_map linkmap;
+    int constructors_called;
+    Elf32_Addr gnu_relro_start;
+    unsigned gnu_relro_len;
+};
 
-    Traced proc(pid);
+#define R_ARM_COPY       20
+#define R_ARM_GLOB_DAT   21
+#define R_ARM_JUMP_SLOT  22
+#define R_ARM_RELATIVE   23
 
-    char *library = strdup(argv[2]);
-
-    printf( "@ Injecting library %s into process %d.\n\n", library, pid );
-
-    printf( "@ Calling dlopen in target process ...\n" );
-
-    unsigned long dlret = proc.dlopen( library );
-
-    printf( "@ dlopen returned %p\n", dlret );
-
-/*
-    If you want to remotely call a function inside the injected library,
-    uncomment the following code.
-
-    unsigned long rsym = proc.dlsym( dlret, "you_symbol_name" );
-
-    printf( "@ dlsym returned %p\n", rsym );
-
-    proc.call( (void *)rsym, 1, some_argument );
-*/
-
-    free( library );
-    
-    return 0;
-}
+#endif
