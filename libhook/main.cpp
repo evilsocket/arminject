@@ -42,22 +42,21 @@ void __attribute__ ((constructor)) libhook_main()
 {
     HOOKLOG( "LIBRARY LOADED FROM PID %d.", getpid() );
 
-    const char *modules[] = {
-        "libc.so",
-        "libjavacore.so",
-        "libandroid_runtime.so",
-        "libandroid.so",
-        "libart.so",
-        "libbcc.so",
-        "libc++.so",
-        "libcutils.so"
-    };
+    // get a list of all loaded modules inside this process.
+    ld_modules_t modules = libhook_get_modules();
 
-    for( int i = 0, n = sizeof(modules) / sizeof(modules[0]); i < n; ++i ){
-        HOOKLOG( "Hooking module %s ...", modules[i] );
+    HOOKLOG( "Found %lu loaded modules.", modules.size() );
 
-        __open = (open_t)libhook_addhook( modules[i], "open", hook_open );
+    for( ld_modules_t::const_iterator i = modules.begin(), e = modules.end(); i != e; ++i ){
+        // don't hook ourself :P
+        if( i->name.find( "libhook.so" ) == std::string::npos ) {
+            HOOKLOG( "[0x%X] Hooking %s ...", i->address, i->name.c_str() );
 
-        HOOKLOG( "  Original open @ %p", __open );
+            open_t tmp = (open_t)libhook_addhook( i->name.c_str(), "open", hook_open );
+            // update the original pointer only if the reference we found is valid.
+            if( tmp != 0 ){
+                __open = tmp;
+            }
+        }
     }
 }

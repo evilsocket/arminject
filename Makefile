@@ -15,6 +15,8 @@ test: all
 	@adb push libhook/libhook.so /data/local/tmp/
 	@adb shell chmod 777 /data/local/tmp/injector
 	@echo "@ Attaching to process $(PROCESS) ..."
+	@adb shell su -c pkill -9 $(PROCESS)
+	@sleep 1
 	@adb logcat -c
 	@adb shell su -c am start $(PROCESS)/$(ACTIVITY)
 	@sleep 2

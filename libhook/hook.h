@@ -34,9 +34,25 @@
 #include <sys/types.h>
 #include <dlfcn.h>
 #include <unistd.h>
+#include <string>
+#include <vector>
 
 #define HOOKLOG(F,...) __android_log_print( ANDROID_LOG_INFO, "LIBHOOK", F, __VA_ARGS__ )
 
-unsigned libhook_addhook( const char *soname, const char *symbol, unsigned newval );
+typedef struct ld_module
+{
+    uintptr_t   address;
+    std::string name;
+
+    ld_module( uintptr_t a, const std::string& n ) : address(a), name(n) {
+
+    }
+}
+ld_module_t;
+
+typedef std::vector<ld_module_t> ld_modules_t;
+
+ld_modules_t libhook_get_modules();
+unsigned     libhook_addhook( const char *soname, const char *symbol, unsigned newval );
 
 #endif

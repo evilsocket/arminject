@@ -63,6 +63,37 @@ static Elf32_Sym *soinfo_elf_lookup(struct soinfo *si, unsigned hash, const char
     return NULL;
 }
 
+ld_modules_t libhook_get_modules() {
+    ld_modules_t modules;
+    char buffer[1024] = {0};
+    uintptr_t address;
+    std::string name;
+
+    FILE *fp = fopen( "/proc/self/maps", "rt" );
+    if( fp == NULL ){
+        perror("fopen");
+        goto done;
+    }
+
+    while( fgets( buffer, sizeof(buffer), fp ) ) {
+        if( strstr( buffer, "r-xp" ) && strstr( buffer, ".so" ) ){
+            address = (uintptr_t)strtoul( buffer, NULL, 16 );
+            name    = strrchr( buffer, ' ' );
+            name.resize( name.size() - 1 );
+
+            modules.push_back( ld_module_t( address, name ) );
+        }
+    }
+
+    done:
+
+    if(fp){
+        fclose(fp);
+    }
+
+    return modules;
+}
+
 unsigned libhook_addhook( const char *soname, const char *symbol, unsigned newval ) {
     struct soinfo *si = NULL;
     Elf32_Rel *rel = NULL;
