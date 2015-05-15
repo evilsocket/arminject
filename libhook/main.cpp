@@ -62,9 +62,6 @@ FUNCTION_TYPE o( const char *name ) {
     return (FUNCTION_TYPE)NULL;
 }
 
-open_t __open = NULL;
-write_t __write = NULL;
-
 int hook_open(const char *pathname, int flags) {
     HOOKLOG( "[%d] open('%s', %d)", getpid(), pathname, flags );
 
