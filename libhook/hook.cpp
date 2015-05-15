@@ -100,7 +100,10 @@ unsigned libhook_addhook( const char *soname, const char *symbol, unsigned newva
     unsigned int sym_offset = 0;
     size_t i;
 
-    si = (struct soinfo *)dlopen(soname,0);
+    // since we know the module is already loaded and mostly
+    // we DO NOT want its constructors to be called again,
+    // ise RTLD_NOLOAD to just get its soinfo address.
+    si = (struct soinfo *)dlopen( soname, 4 /* RTLD_NOLOAD */ );
     if( !si ){
         HOOKLOG( "dlopen error: %s.", dlerror() );
         return 0;
