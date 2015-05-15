@@ -32,7 +32,6 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 #include "hook.h"
-#include "linker.h"
 #include <sys/mman.h>
 
 
@@ -78,7 +77,7 @@ ld_modules_t libhook_get_modules() {
     while( fgets( buffer, sizeof(buffer), fp ) ) {
         if( strstr( buffer, "r-xp" ) && strstr( buffer, ".so" ) ){
             address = (uintptr_t)strtoul( buffer, NULL, 16 );
-            name    = strrchr( buffer, ' ' );
+            name    = strrchr( buffer, ' ' ) + 1;
             name.resize( name.size() - 1 );
 
             modules.push_back( ld_module_t( address, name ) );
@@ -99,9 +98,9 @@ unsigned libhook_addhook( const char *soname, const char *symbol, unsigned newva
     Elf32_Rel *rel = NULL;
     Elf32_Sym *s = NULL;
     unsigned int sym_offset = 0;
-    int i;
+    size_t i;
 
-    si = (struct soinfo *) dlopen(soname, 0);
+    si = (struct soinfo *)dlopen(soname,0);
     if( !si ){
         HOOKLOG( "dlopen error: %s.", dlerror() );
         return 0;
@@ -109,7 +108,6 @@ unsigned libhook_addhook( const char *soname, const char *symbol, unsigned newva
 
     s = soinfo_elf_lookup( si, elfhash(symbol), symbol );
     if( !s ){
-        HOOKLOG( "Could not lookup symbol %s.", symbol );
         return 0;
     }
 

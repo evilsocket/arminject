@@ -60,7 +60,7 @@ int main( int argc, char **argv )
 
     unsigned long dlret = proc.dlopen( library.c_str() );
 
-    printf( "@ dlopen returned %p\n", dlret );
+    printf( "@ dlopen returned 0x%lX\n", dlret );
 
     return 0;
 }

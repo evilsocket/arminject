@@ -1,7 +1,7 @@
 SUBDIRS=injector libhook
 
-PROCESS=com.android.chrome
-ACTIVITY=com.google.android.apps.chrome.Main
+PROCESS=com.google.android.apps.authenticator2
+ACTIVITY=com.google.android.apps.authenticator.AuthenticatorActivity
 
 all:
 	for d in $(SUBDIRS); do [ -d $$d ] && $(MAKE) -C $$d; done

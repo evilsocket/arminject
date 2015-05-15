@@ -36,6 +36,7 @@
 #include <unistd.h>
 #include <string>
 #include <vector>
+#include "linker.h"
 
 #define HOOKLOG(F,...) __android_log_print( ANDROID_LOG_INFO, "LIBHOOK", F, __VA_ARGS__ )
 

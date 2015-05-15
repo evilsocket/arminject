@@ -119,8 +119,8 @@ public:
      * Read 'blen' bytes from the remote process at 'addr' address.
      */
     bool read( size_t addr, unsigned char *buf, size_t blen ){
-        int i = 0;
-        size_t ret = 0;
+        size_t i = 0;
+        long ret = 0;
 
         for( i = 0; i < blen; i += sizeof(size_t) ){
             ret = trace( PTRACE_PEEKTEXT, (void *)(addr + i) );
@@ -138,8 +138,8 @@ public:
      * Write 'blen' bytes to the remote process at 'addr' address.
      */
     bool write( size_t addr, unsigned char *buf, size_t blen){
-        int i = 0;
-        size_t ret;
+        size_t i = 0;
+        long ret;
 
         // make sure the buffer is word aligned
         char *ptr = (char *)malloc(blen + blen % sizeof(size_t));

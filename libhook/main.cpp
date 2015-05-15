@@ -29,13 +29,52 @@
 #include "hook.h"
 
 typedef int (* open_t)(const char *, int);
+typedef ssize_t (* write_t)( int, const void *, size_t, int );
+
+typedef struct
+{
+    const char *name;
+    uintptr_t   original;
+    uintptr_t   hook;
+}
+hook_t;
+
+int hook_open(const char *pathname, int flags);
+ssize_t hook_write(int sockfd, const void *buf, size_t len, int flags);
+
+static hook_t __hooks[] = {
+    { "open",  0, (uintptr_t)&hook_open  },
+    { "write", 0, (uintptr_t)&hook_write }
+};
+
+#define NHOOKS ( sizeof(__hooks) / sizeof(__hooks[0] ) )
+
+template <class FUNCTION_TYPE>
+FUNCTION_TYPE o( const char *name ) {
+    for( size_t i = 0; i < NHOOKS; ++i ) {
+        if( strcmp( __hooks[i].name, name ) == 0 ){
+            return (FUNCTION_TYPE)__hooks[i].original;
+        }
+    }
+
+    HOOKLOG( "[%d] !!! COULD NOT FIND ORIGINAL POINTER OF FUNCTION '%s' !!!", getpid(), name );
+
+    return (FUNCTION_TYPE)NULL;
+}
 
 open_t __open = NULL;
+write_t __write = NULL;
 
 int hook_open(const char *pathname, int flags) {
     HOOKLOG( "[%d] open('%s', %d)", getpid(), pathname, flags );
 
-    return __open( pathname, flags );
+    return o<open_t>("open")( pathname, flags );
+}
+
+ssize_t hook_write(int sockfd, const void *buf, size_t len, int flags) {
+    HOOKLOG( "[%d] write( %d, %s, %u, %d )", getpid(), sockfd, (const char *)buf, len, flags );
+
+    return o<write_t>("write")( sockfd, buf, len, flags );
 }
 
 void __attribute__ ((constructor)) libhook_main()
@@ -45,17 +84,24 @@ void __attribute__ ((constructor)) libhook_main()
     // get a list of all loaded modules inside this process.
     ld_modules_t modules = libhook_get_modules();
 
-    HOOKLOG( "Found %lu loaded modules.", modules.size() );
+    HOOKLOG( "Found %u loaded modules.", modules.size() );
+    HOOKLOG( "Installing %u hooks.", NHOOKS );
 
     for( ld_modules_t::const_iterator i = modules.begin(), e = modules.end(); i != e; ++i ){
         // don't hook ourself :P
         if( i->name.find( "libhook.so" ) == std::string::npos ) {
             HOOKLOG( "[0x%X] Hooking %s ...", i->address, i->name.c_str() );
 
-            open_t tmp = (open_t)libhook_addhook( i->name.c_str(), "open", hook_open );
-            // update the original pointer only if the reference we found is valid.
-            if( tmp != 0 ){
-                __open = tmp;
+            for( size_t j = 0; j < NHOOKS; ++j ) {
+                unsigned tmp = libhook_addhook( i->name.c_str(), __hooks[j].name, __hooks[j].hook );
+
+                // update the original pointer only if the reference we found is valid
+                // and the pointer itself doesn't have a value yet.
+                if( __hooks[j].original == 0 && tmp != 0 ){
+                    __hooks[j].original = (uintptr_t)tmp;
+
+                    HOOKLOG( "  %s - 0x%x -> 0x%x", __hooks[j].name, __hooks[j].original, __hooks[j].hook );
+                }
             }
         }
     }

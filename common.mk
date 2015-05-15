@@ -18,4 +18,4 @@ endif
 
 PREFIX   = arm-linux-androideabi-
 CXX      = $(PREFIX)g++
-CXXFLAGS = -I$(STLPORT_INC) -L$(STLPORT_LIBS) -w -fpermissive -O3 -fPIC -fPIE -pie --sysroot $(SYSROOT)
+CXXFLAGS = -I$(STLPORT_INC) -L$(STLPORT_LIBS) -Wall -Werror -fpermissive -O3 -fPIC -fPIE -pie --sysroot $(SYSROOT)
