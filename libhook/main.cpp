@@ -27,7 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 #include "hook.h"
-#include "hooks/file.h"
+#include "hooks/io.h"
 
 typedef struct
 {
@@ -41,7 +41,8 @@ static hook_t __hooks[] = {
     ADDHOOK( open ),
     ADDHOOK( write ),
     ADDHOOK( read ),
-    ADDHOOK( close )
+    ADDHOOK( close ),
+    ADDHOOK( connect )
 };
 
 #define NHOOKS ( sizeof(__hooks) / sizeof(__hooks[0] ) )

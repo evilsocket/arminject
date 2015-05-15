@@ -26,12 +26,20 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef FILE_H
-#define FILE_H
+#ifndef IO_H
+#define IO_H
+
+#include <arpa/inet.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 
 int hook_open(const char *pathname, int flags);
 ssize_t hook_write(int fd, const void *buf, size_t len, int flags);
 ssize_t hook_read(int fd, void *buf, size_t count);
 int hook_close(int fd);
+
+int hook_connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
+
 
 #endif

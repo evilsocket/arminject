@@ -27,12 +27,66 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 #include "hook.h"
-#include "file.h"
+#include "io.h"
+#include <map>
+#include <sstream>
+#include <pthread.h>
+
+typedef std::map< int, std::string > fds_map_t;
+
+static pthread_mutex_t __lock = PTHREAD_MUTEX_INITIALIZER;
+static fds_map_t __descriptors;
+
+#define LOCK() pthread_mutex_lock(&__lock)
+#define UNLOCK() pthread_mutex_unlock(&__lock)
 
 extern uintptr_t find_original( const char *name );
 
+void io_add_descriptor( int fd, const char *name ) {
+    LOCK();
+
+    __descriptors[fd] = name;
+
+    UNLOCK();
+}
+
+void io_del_descriptor( int fd ) {
+    LOCK();
+
+    fds_map_t::iterator i = __descriptors.find(fd);
+    if( i != __descriptors.end() ){
+        __descriptors.erase(i);
+    }
+
+    UNLOCK();
+}
+
+std::string io_resolve_descriptor( int fd ) {
+    std::string name;
+
+    LOCK();
+
+    fds_map_t::iterator i = __descriptors.find(fd);
+    if( i == __descriptors.end() ){
+        std::ostringstream s;
+        s << "(" << fd << ")";
+        name = s.str();
+    }
+    else {
+        name = i->second;
+    }
+
+    UNLOCK();
+
+    return name;
+}
+
 DEFINEHOOK( int, open, (const char *pathname, int flags) ) {
     int fd = ORIGINAL( open, pathname, flags );
+
+    if( fd != -1 ){
+        io_add_descriptor( fd, pathname );
+    }
 
     HOOKLOG( "[%d] open('%s', %d) -> %d", getpid(), pathname, flags, fd );
 
@@ -42,7 +96,7 @@ DEFINEHOOK( int, open, (const char *pathname, int flags) ) {
 DEFINEHOOK( ssize_t, read, (int fd, void *buf, size_t count) ) {
     ssize_t r = ORIGINAL( read, fd, buf, count );
 
-    HOOKLOG( "[%d] read( %d, %p, %u ) -> %d", getpid(), fd, buf, count, r );
+    HOOKLOG( "[%d] read( '%s', %p, %u ) -> %d", getpid(), io_resolve_descriptor(fd).c_str(), buf, count, r );
 
     return r;
 }
@@ -50,7 +104,7 @@ DEFINEHOOK( ssize_t, read, (int fd, void *buf, size_t count) ) {
 DEFINEHOOK( ssize_t, write, (int fd, const void *buf, size_t len, int flags) ) {
     ssize_t wrote = ORIGINAL( write, fd, buf, len, flags );
 
-    HOOKLOG( "[%d] write( %d, %s, %u, %d ) -> %d", getpid(), fd, (const char *)buf, len, flags, wrote );
+    HOOKLOG( "[%d] write( '%s', %s, %u, %d ) -> %d", getpid(), io_resolve_descriptor(fd).c_str(), (const char *)buf, len, flags, wrote );
 
     return wrote;
 }
@@ -58,7 +112,33 @@ DEFINEHOOK( ssize_t, write, (int fd, const void *buf, size_t len, int flags) ) {
 DEFINEHOOK( int, close, (int fd) ) {
     int c = ORIGINAL( close, fd );
 
-    HOOKLOG( "[%d] close( %d ) -> %d", getpid(), fd, c );
+    HOOKLOG( "[%d] close( '%s' ) -> %d", getpid(), io_resolve_descriptor(fd).c_str(), c );
+
+    io_del_descriptor( fd );
 
     return c;
+}
+
+DEFINEHOOK( int, connect, (int sockfd, const struct sockaddr *addr, socklen_t addrlen) ) {
+    int ret = ORIGINAL( connect, sockfd, addr, addrlen );
+
+    struct sockaddr_in *addr_in = (struct sockaddr_in *)addr;
+    std::ostringstream s;
+
+    if( addr_in->sin_family == 1 ){
+        struct sockaddr_un *sun = (struct sockaddr_un *)addr;
+
+        s << "unix://" << sun->sun_path;
+    }
+    else {
+        s << "ip://" << inet_ntoa(addr_in->sin_addr);
+    }
+
+    if( ret == 0 ){
+        io_add_descriptor( sockfd, s.str().c_str() );
+    }
+
+    HOOKLOG( "[%d] connect( '%s', %p, %d ) -> %d", getpid(), io_resolve_descriptor(sockfd).c_str(), addr, addrlen, ret );
+
+    return ret;
 }
