@@ -27,9 +27,7 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 #include "hook.h"
-
-typedef int (* open_t)(const char *, int);
-typedef ssize_t (* write_t)( int, const void *, size_t, int );
+#include "hooks/file.h"
 
 typedef struct
 {
@@ -39,39 +37,25 @@ typedef struct
 }
 hook_t;
 
-int hook_open(const char *pathname, int flags);
-ssize_t hook_write(int sockfd, const void *buf, size_t len, int flags);
-
 static hook_t __hooks[] = {
-    { "open",  0, (uintptr_t)&hook_open  },
-    { "write", 0, (uintptr_t)&hook_write }
+    ADDHOOK( open ),
+    ADDHOOK( write ),
+    ADDHOOK( read ),
+    ADDHOOK( close )
 };
 
 #define NHOOKS ( sizeof(__hooks) / sizeof(__hooks[0] ) )
 
-template <class FUNCTION_TYPE>
-FUNCTION_TYPE o( const char *name ) {
+uintptr_t find_original( const char *name ) {
     for( size_t i = 0; i < NHOOKS; ++i ) {
         if( strcmp( __hooks[i].name, name ) == 0 ){
-            return (FUNCTION_TYPE)__hooks[i].original;
+            return __hooks[i].original;
         }
     }
 
     HOOKLOG( "[%d] !!! COULD NOT FIND ORIGINAL POINTER OF FUNCTION '%s' !!!", getpid(), name );
 
-    return (FUNCTION_TYPE)NULL;
-}
-
-int hook_open(const char *pathname, int flags) {
-    HOOKLOG( "[%d] open('%s', %d)", getpid(), pathname, flags );
-
-    return o<open_t>("open")( pathname, flags );
-}
-
-ssize_t hook_write(int sockfd, const void *buf, size_t len, int flags) {
-    HOOKLOG( "[%d] write( %d, %s, %u, %d )", getpid(), sockfd, (const char *)buf, len, flags );
-
-    return o<write_t>("write")( sockfd, buf, len, flags );
+    return 0;
 }
 
 void __attribute__ ((constructor)) libhook_main()

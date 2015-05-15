@@ -26,45 +26,39 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  * POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef HOOK_H
-#define HOOK_H
+#include "hook.h"
+#include "file.h"
 
-#include <android/log.h>
-#include <string>
-#include <sys/types.h>
-#include <dlfcn.h>
-#include <unistd.h>
-#include <string>
-#include <vector>
-#include "linker.h"
+extern uintptr_t find_original( const char *name );
 
-#define HOOKLOG(F,...) \
-    __android_log_print( ANDROID_LOG_INFO, "LIBHOOK", F, __VA_ARGS__ )
+DEFINEHOOK( int, open, (const char *pathname, int flags) ) {
+    int fd = ORIGINAL( open, pathname, flags );
 
-#define ORIGINAL( TYPENAME, ... ) \
-    ((TYPENAME ## _t)find_original( #TYPENAME ))( __VA_ARGS__ )
+    HOOKLOG( "[%d] open('%s', %d) -> %d", getpid(), pathname, flags, fd );
 
-#define DEFINEHOOK( RET_TYPE, NAME, ARGS ) \
-    typedef RET_TYPE (* NAME ## _t)ARGS; \
-    RET_TYPE hook_ ## NAME ARGS
-
-#define ADDHOOK( NAME ) \
-    { #NAME, 0, (uintptr_t)&hook_ ## NAME }
-
-typedef struct ld_module
-{
-    uintptr_t   address;
-    std::string name;
-
-    ld_module( uintptr_t a, const std::string& n ) : address(a), name(n) {
-
-    }
+    return fd;
 }
-ld_module_t;
 
-typedef std::vector<ld_module_t> ld_modules_t;
+DEFINEHOOK( ssize_t, read, (int fd, void *buf, size_t count) ) {
+    ssize_t r = ORIGINAL( read, fd, buf, count );
 
-ld_modules_t libhook_get_modules();
-unsigned     libhook_addhook( const char *soname, const char *symbol, unsigned newval );
+    HOOKLOG( "[%d] read( %d, %p, %u ) -> %d", getpid(), fd, buf, count, r );
 
-#endif
+    return r;
+}
+
+DEFINEHOOK( ssize_t, write, (int fd, const void *buf, size_t len, int flags) ) {
+    ssize_t wrote = ORIGINAL( write, fd, buf, len, flags );
+
+    HOOKLOG( "[%d] write( %d, %s, %u, %d ) -> %d", getpid(), fd, (const char *)buf, len, flags, wrote );
+
+    return wrote;
+}
+
+DEFINEHOOK( int, close, (int fd) ) {
+    int c = ORIGINAL( close, fd );
+
+    HOOKLOG( "[%d] close( %d ) -> %d", getpid(), fd, c );
+
+    return c;
+}
