@@ -68,9 +68,19 @@ std::string io_resolve_descriptor( int fd ) {
 
     fds_map_t::iterator i = __descriptors.find(fd);
     if( i == __descriptors.end() ){
-        std::ostringstream s;
-        s << "(" << fd << ")";
-        name = s.str();
+        // attempt to read descriptor from /proc/self/fd
+        char descpath[0xFF] = {0},
+             descbuff[0xFF] = {0};
+
+        sprintf( descpath, "/proc/self/fd/%d", fd );
+        if( readlink( descpath, descbuff, 0xFF ) != -1 ){
+            name = descbuff;
+        }
+        else {
+            std::ostringstream s;
+            s << "(" << fd << ")";
+            name = s.str();
+        }
     }
     else {
         name = i->second;
@@ -139,6 +149,62 @@ DEFINEHOOK( int, connect, (int sockfd, const struct sockaddr *addr, socklen_t ad
     }
 
     HOOKLOG( "[%d] connect( '%s', %p, %d ) -> %d", getpid(), io_resolve_descriptor(sockfd).c_str(), addr, addrlen, ret );
+
+    return ret;
+}
+
+DEFINEHOOK( ssize_t, send, (int sockfd, const void *buf, size_t len, int flags) ) {
+    ssize_t sent = ORIGINAL( send, sockfd, buf, len, flags );
+
+    HOOKLOG( "[%d] send( '%s', %s, %u, %d ) -> %d", getpid(), io_resolve_descriptor(sockfd).c_str(), (const char *)buf, len, flags, sent );
+
+    return sent;
+}
+
+DEFINEHOOK( ssize_t, sendto, (int sockfd, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr, socklen_t addrlen) ) {
+    ssize_t sent = ORIGINAL( sendto, sockfd, buf, len, flags, dest_addr, addrlen );
+
+    HOOKLOG( "[%d] sendto( '%s', %s, %u, %d, %p, %u ) -> %d", getpid(), io_resolve_descriptor(sockfd).c_str(), (const char *)buf, len, flags, dest_addr, addrlen, sent );
+
+    return sent;
+}
+
+DEFINEHOOK( ssize_t, sendmsg, (int sockfd, const struct msghdr *msg, int flags) ) {
+    ssize_t sent = ORIGINAL( sendmsg, sockfd, msg, flags );
+
+    HOOKLOG( "[%d] sendmsg( '%s', %p, %d ) -> %d", getpid(), io_resolve_descriptor(sockfd).c_str(), msg, flags, sent );
+
+    return sent;
+}
+
+DEFINEHOOK( ssize_t, recv, (int sockfd, const void *buf, size_t len, int flags) ) {
+    ssize_t recvd = ORIGINAL( recv, sockfd, buf, len, flags );
+
+    HOOKLOG( "[%d] recv( '%s', %s, %u, %d ) -> %d", getpid(), io_resolve_descriptor(sockfd).c_str(), (const char *)buf, len, flags, recvd );
+
+    return recvd;
+}
+
+DEFINEHOOK( ssize_t, recvfrom, (int sockfd, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr, socklen_t addrlen) ) {
+    ssize_t recvd = ORIGINAL( recvfrom, sockfd, buf, len, flags, dest_addr, addrlen );
+
+    HOOKLOG( "[%d] recvfrom( '%s', %s, %u, %d, %p, %u ) -> %d", getpid(), io_resolve_descriptor(sockfd).c_str(), (const char *)buf, len, flags, dest_addr, addrlen, recvd );
+
+    return recvd;
+}
+
+DEFINEHOOK( ssize_t, recvmsg, (int sockfd, const struct msghdr *msg, int flags) ) {
+    ssize_t recvd = ORIGINAL( recvmsg, sockfd, msg, flags );
+
+    HOOKLOG( "[%d] recvmsg( '%s', %p, %d ) -> %d", getpid(), io_resolve_descriptor(sockfd).c_str(), msg, flags, recvd );
+
+    return recvd;
+}
+
+DEFINEHOOK( int, shutdown, (int sockfd, int how) ) {
+    int ret = ORIGINAL( shutdown, sockfd, how );
+
+    HOOKLOG( "[%d] shutdown( '%s', %d ) -> %d", getpid(), io_resolve_descriptor(sockfd).c_str(), how, ret );
 
     return ret;
 }

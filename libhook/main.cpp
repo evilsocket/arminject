@@ -42,7 +42,14 @@ static hook_t __hooks[] = {
     ADDHOOK( write ),
     ADDHOOK( read ),
     ADDHOOK( close ),
-    ADDHOOK( connect )
+    ADDHOOK( connect ),
+    ADDHOOK( send ),
+    ADDHOOK( sendto ),
+    ADDHOOK( sendmsg ),
+    ADDHOOK( recv ),
+    ADDHOOK( recvfrom ),
+    ADDHOOK( recvmsg ),
+    ADDHOOK( shutdown )
 };
 
 #define NHOOKS ( sizeof(__hooks) / sizeof(__hooks[0] ) )

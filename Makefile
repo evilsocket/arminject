@@ -19,7 +19,6 @@ test: all
 	@sleep 1
 	@adb logcat -c
 	@adb shell su -c am start $(PROCESS)/$(ACTIVITY)
-	@sleep 2
 	@adb shell su 0 setenforce 0
 	@adb shell 'su -c "/data/local/tmp/injector `pidof $(PROCESS)` /data/local/tmp/libhook.so"'
 	@adb logcat | grep HOOK
