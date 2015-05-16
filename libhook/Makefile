@@ -1,7 +1,7 @@
 include ../common.mk
 
 TARGET    = libhook.so
-MAIN_SRCS = main.cpp hook.cpp hooks/io.cpp
+MAIN_SRCS = main.cpp hook.cpp report.cpp hooks/io.cpp
 MAIN_OBJS = $(MAIN_SRCS:.cpp=.o)
 
 all: $(MAIN_OBJS)

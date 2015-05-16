@@ -38,6 +38,7 @@ typedef struct
 hook_t;
 
 static hook_t __hooks[] = {
+
     ADDHOOK( open ),
     ADDHOOK( write ),
     ADDHOOK( read ),

@@ -28,6 +28,7 @@
  */
 #include "hook.h"
 #include "io.h"
+#include "report.h"
 #include <map>
 #include <sstream>
 #include <pthread.h>
@@ -98,7 +99,10 @@ DEFINEHOOK( int, open, (const char *pathname, int flags) ) {
         io_add_descriptor( fd, pathname );
     }
 
-    HOOKLOG( "[%d] open('%s', %d) -> %d", getpid(), pathname, flags, fd );
+    report_add( "open", "si.i",
+        "pathname", pathname,
+        "flags", flags,
+        fd );
 
     return fd;
 }
@@ -106,7 +110,11 @@ DEFINEHOOK( int, open, (const char *pathname, int flags) ) {
 DEFINEHOOK( ssize_t, read, (int fd, void *buf, size_t count) ) {
     ssize_t r = ORIGINAL( read, fd, buf, count );
 
-    HOOKLOG( "[%d] read( '%s', %p, %u ) -> %d", getpid(), io_resolve_descriptor(fd).c_str(), buf, count, r );
+    report_add( "read", "spu.i",
+        "fd", io_resolve_descriptor(fd).c_str(),
+        "buf", buf,
+        "count", count,
+        r );
 
     return r;
 }
@@ -114,7 +122,12 @@ DEFINEHOOK( ssize_t, read, (int fd, void *buf, size_t count) ) {
 DEFINEHOOK( ssize_t, write, (int fd, const void *buf, size_t len, int flags) ) {
     ssize_t wrote = ORIGINAL( write, fd, buf, len, flags );
 
-    HOOKLOG( "[%d] write( '%s', %s, %u, %d ) -> %d", getpid(), io_resolve_descriptor(fd).c_str(), (const char *)buf, len, flags, wrote );
+    report_add( "write", "spui.i",
+        "fd", io_resolve_descriptor(fd).c_str(),
+        "buf", buf,
+        "len", len,
+        "flags", flags,
+        wrote );
 
     return wrote;
 }
@@ -122,7 +135,9 @@ DEFINEHOOK( ssize_t, write, (int fd, const void *buf, size_t len, int flags) ) {
 DEFINEHOOK( int, close, (int fd) ) {
     int c = ORIGINAL( close, fd );
 
-    HOOKLOG( "[%d] close( '%s' ) -> %d", getpid(), io_resolve_descriptor(fd).c_str(), c );
+    report_add( "close", "s.i",
+        "fd", io_resolve_descriptor(fd).c_str(),
+        c );
 
     io_del_descriptor( fd );
 
@@ -148,7 +163,11 @@ DEFINEHOOK( int, connect, (int sockfd, const struct sockaddr *addr, socklen_t ad
         io_add_descriptor( sockfd, s.str().c_str() );
     }
 
-    HOOKLOG( "[%d] connect( '%s', %p, %d ) -> %d", getpid(), io_resolve_descriptor(sockfd).c_str(), addr, addrlen, ret );
+    report_add( "connect", "spd.i",
+        "sockfd", io_resolve_descriptor(sockfd).c_str(),
+        "addr", addr,
+        "addrlen", addrlen,
+        ret );
 
     return ret;
 }
@@ -156,7 +175,12 @@ DEFINEHOOK( int, connect, (int sockfd, const struct sockaddr *addr, socklen_t ad
 DEFINEHOOK( ssize_t, send, (int sockfd, const void *buf, size_t len, int flags) ) {
     ssize_t sent = ORIGINAL( send, sockfd, buf, len, flags );
 
-    HOOKLOG( "[%d] send( '%s', %s, %u, %d ) -> %d", getpid(), io_resolve_descriptor(sockfd).c_str(), (const char *)buf, len, flags, sent );
+    report_add( "send", "spui.i",
+        "sockfd", io_resolve_descriptor(sockfd).c_str(),
+        "buf", buf,
+        "len", len,
+        "flags", flags,
+        sent );
 
     return sent;
 }
@@ -164,7 +188,14 @@ DEFINEHOOK( ssize_t, send, (int sockfd, const void *buf, size_t len, int flags) 
 DEFINEHOOK( ssize_t, sendto, (int sockfd, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr, socklen_t addrlen) ) {
     ssize_t sent = ORIGINAL( sendto, sockfd, buf, len, flags, dest_addr, addrlen );
 
-    HOOKLOG( "[%d] sendto( '%s', %s, %u, %d, %p, %u ) -> %d", getpid(), io_resolve_descriptor(sockfd).c_str(), (const char *)buf, len, flags, dest_addr, addrlen, sent );
+    report_add( "sendto", "spuibu.i",
+        "sockfd", io_resolve_descriptor(sockfd).c_str(),
+        "buf", buf,
+        "len", len,
+        "flags", flags,
+        "dest_addr", dest_addr,
+        "addrlen", addrlen,
+        sent );
 
     return sent;
 }
@@ -172,7 +203,11 @@ DEFINEHOOK( ssize_t, sendto, (int sockfd, const void *buf, size_t len, int flags
 DEFINEHOOK( ssize_t, sendmsg, (int sockfd, const struct msghdr *msg, int flags) ) {
     ssize_t sent = ORIGINAL( sendmsg, sockfd, msg, flags );
 
-    HOOKLOG( "[%d] sendmsg( '%s', %p, %d ) -> %d", getpid(), io_resolve_descriptor(sockfd).c_str(), msg, flags, sent );
+    report_add( "sendmsg", "spi.i",
+        "sockfd", io_resolve_descriptor(sockfd).c_str(),
+        "msg", msg,
+        "flags", flags,
+        sent );
 
     return sent;
 }
@@ -180,7 +215,12 @@ DEFINEHOOK( ssize_t, sendmsg, (int sockfd, const struct msghdr *msg, int flags) 
 DEFINEHOOK( ssize_t, recv, (int sockfd, const void *buf, size_t len, int flags) ) {
     ssize_t recvd = ORIGINAL( recv, sockfd, buf, len, flags );
 
-    HOOKLOG( "[%d] recv( '%s', %s, %u, %d ) -> %d", getpid(), io_resolve_descriptor(sockfd).c_str(), (const char *)buf, len, flags, recvd );
+    report_add( "recv", "spui.i",
+        "sockfd", io_resolve_descriptor(sockfd).c_str(),
+        "buf", buf,
+        "len", len,
+        "flags", flags,
+        recvd );
 
     return recvd;
 }
@@ -188,7 +228,14 @@ DEFINEHOOK( ssize_t, recv, (int sockfd, const void *buf, size_t len, int flags) 
 DEFINEHOOK( ssize_t, recvfrom, (int sockfd, const void *buf, size_t len, int flags, const struct sockaddr *dest_addr, socklen_t addrlen) ) {
     ssize_t recvd = ORIGINAL( recvfrom, sockfd, buf, len, flags, dest_addr, addrlen );
 
-    HOOKLOG( "[%d] recvfrom( '%s', %s, %u, %d, %p, %u ) -> %d", getpid(), io_resolve_descriptor(sockfd).c_str(), (const char *)buf, len, flags, dest_addr, addrlen, recvd );
+    report_add( "recvfrom", "spuipu.i",
+        "sockfd", io_resolve_descriptor(sockfd).c_str(),
+        "buf", buf,
+        "len", len,
+        "flags", flags,
+        "dest_addr", dest_addr,
+        "addrlen", addrlen,
+        recvd );
 
     return recvd;
 }
@@ -196,7 +243,11 @@ DEFINEHOOK( ssize_t, recvfrom, (int sockfd, const void *buf, size_t len, int fla
 DEFINEHOOK( ssize_t, recvmsg, (int sockfd, const struct msghdr *msg, int flags) ) {
     ssize_t recvd = ORIGINAL( recvmsg, sockfd, msg, flags );
 
-    HOOKLOG( "[%d] recvmsg( '%s', %p, %d ) -> %d", getpid(), io_resolve_descriptor(sockfd).c_str(), msg, flags, recvd );
+    report_add( "recvmsg", "spi.i",
+        "sockfd", io_resolve_descriptor(sockfd).c_str(),
+        "msg", msg,
+        "flags", flags,
+        recvd );
 
     return recvd;
 }
@@ -204,7 +255,10 @@ DEFINEHOOK( ssize_t, recvmsg, (int sockfd, const struct msghdr *msg, int flags) 
 DEFINEHOOK( int, shutdown, (int sockfd, int how) ) {
     int ret = ORIGINAL( shutdown, sockfd, how );
 
-    HOOKLOG( "[%d] shutdown( '%s', %d ) -> %d", getpid(), io_resolve_descriptor(sockfd).c_str(), how, ret );
+    report_add( "shutdown", "si.i",
+        "sockfd", io_resolve_descriptor(sockfd).c_str(),
+        "how", how,
+        ret );
 
     return ret;
 }
