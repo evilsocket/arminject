@@ -2,3 +2,5 @@
 *.so
 *.pyc
 injector/injector
+libs
+obj
