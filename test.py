@@ -35,8 +35,8 @@ try:
     print "@ Pushing files to /data/local/tmp ..."
 
     adb.sh( "rm -rf /data/local/tmp/injector /data/local/tmp/libhook.so" )
-    adb.push( "injector/injector",  "/data/local/tmp/injector" )
-    adb.push( "libhook/libhook.so", "/data/local/tmp/libhook.so" )
+    adb.push( "libs/armeabi-v7a/injector",  "/data/local/tmp/injector" )
+    adb.push( "libs/armeabi-v7a/libhook.so", "/data/local/tmp/libhook.so" )
     adb.sh( "chmod 777 /data/local/tmp/injector" )
 
     print "@ Starting %s/%s ..." % ( process, activity )

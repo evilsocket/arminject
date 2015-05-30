@@ -1,13 +1,11 @@
-SUBDIRS=injector libhook
-
 PROCESS=com.android.chrome
 ACTIVITY=com.google.android.apps.chrome.Main
 
 all:
-	for d in $(SUBDIRS); do [ -d $$d ] && $(MAKE) -C $$d; done
+	@ndk-build -B
 
 clean:
-	for d in $(SUBDIRS); do [ -d $$d ] && $(MAKE) -C $$d clean; done
+	@rm -rf obj libs
 
 test: all
 	python test.py
