@@ -93,6 +93,21 @@ ld_modules_t libhook_get_modules() {
     return modules;
 }
 
+unsigned libhook_patch_address( unsigned addr, unsigned newval ) {
+    unsigned original = -1;
+    size_t pagesize = sysconf(_SC_PAGESIZE);
+    const void *aligned_pointer = (const void*)(addr & ~(pagesize - 1));
+
+    mprotect(aligned_pointer, pagesize, PROT_WRITE | PROT_READ);
+
+    original = *(unsigned *)addr;
+    *((unsigned*)addr) = newval;
+
+    mprotect(aligned_pointer, pagesize, PROT_READ);
+
+    return original;
+}
+
 unsigned libhook_addhook( const char *soname, const char *symbol, unsigned newval ) {
     struct soinfo *si = NULL;
     Elf32_Rel *rel = NULL;
@@ -119,27 +134,15 @@ unsigned libhook_addhook( const char *soname, const char *symbol, unsigned newva
 
     // loop reloc table to find the symbol by index
     for( i = 0; i < si->plt_rel_count; ++i, ++rel ) {
-        unsigned type   = ELF32_R_TYPE(rel->r_info);
-        unsigned sym    = ELF32_R_SYM(rel->r_info);
-        unsigned reloc  = (unsigned)(rel->r_offset + si->base);
-        unsigned original = 0;
-        size_t pagesize;
-        const void* aligned_pointer;
+        unsigned type  = ELF32_R_TYPE(rel->r_info);
+        unsigned sym   = ELF32_R_SYM(rel->r_info);
+        unsigned reloc = (unsigned)(rel->r_offset + si->base);
 
         if( sym_offset == sym ) {
             switch(type) {
                 case R_ARM_JUMP_SLOT:
-                    pagesize = sysconf(_SC_PAGESIZE);
-                    aligned_pointer = (const void*)(reloc & ~(pagesize - 1));
 
-                    mprotect(aligned_pointer, pagesize, PROT_WRITE | PROT_READ);
-
-                    original = *(unsigned *)reloc;
-                    *((unsigned*)reloc) = newval;
-
-                    mprotect(aligned_pointer, pagesize, PROT_READ);
-
-                    return original;
+                    return libhook_patch_address( reloc, newval );
 
                 default:
 
