@@ -130,10 +130,9 @@ unsigned libhook_addhook( const char *soname, const char *symbol, unsigned newva
     }
 
     sym_offset = s - si->symtab;
-    rel = si->plt_rel;
 
     // loop reloc table to find the symbol by index
-    for( i = 0; i < si->plt_rel_count; ++i, ++rel ) {
+    for( i = 0, rel = si->plt_rel; i < si->plt_rel_count; ++i, ++rel ) {
         unsigned type  = ELF32_R_TYPE(rel->r_info);
         unsigned sym   = ELF32_R_SYM(rel->r_info);
         unsigned reloc = (unsigned)(rel->r_offset + si->base);
@@ -147,12 +146,31 @@ unsigned libhook_addhook( const char *soname, const char *symbol, unsigned newva
                 default:
 
                     HOOKLOG( "Expected R_ARM_JUMP_SLOT, found 0x%X", type );
-                    return 0;
             }
         }
     }
 
-    HOOKLOG( "Unable to find symbol in the reloc table ( plt_rel_count=%u ).", si->plt_rel_count );
+    // loop dyn reloc table
+    for( i = 0, rel = si->rel; i < si->rel_count; ++i, ++rel ) {
+        unsigned type  = ELF32_R_TYPE(rel->r_info);
+        unsigned sym   = ELF32_R_SYM(rel->r_info);
+        unsigned reloc = (unsigned)(rel->r_offset + si->base);
+
+        if( sym_offset == sym ) {
+            switch(type) {
+                case R_ARM_ABS32:
+                case R_ARM_GLOB_DAT:
+
+                    return libhook_patch_address( reloc, newval );
+
+                default:
+
+                    HOOKLOG( "Expected R_ARM_ABS32 or R_ARM_GLOB_DAT, found 0x%X", type );
+            }
+        }
+    }
+
+    HOOKLOG( "Unable to find symbol in the reloc tables ( plt_rel_count=%u - rel_count=%u ).", si->plt_rel_count, si->rel_count );
 
     return 0;
 }

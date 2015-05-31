@@ -89,6 +89,7 @@ struct soinfo
     unsigned gnu_relro_len;
 };
 
+#define R_ARM_ABS32      2
 #define R_ARM_COPY       20
 #define R_ARM_GLOB_DAT   21
 #define R_ARM_JUMP_SLOT  22
