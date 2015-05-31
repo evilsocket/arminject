@@ -150,6 +150,8 @@ unsigned libhook_addhook( const char *soname, const char *symbol, unsigned newva
         }
     }
 
+    unsigned original = 0;
+
     // loop dyn reloc table
     for( i = 0, rel = si->rel; i < si->rel_count; ++i, ++rel ) {
         unsigned type  = ELF32_R_TYPE(rel->r_info);
@@ -161,7 +163,7 @@ unsigned libhook_addhook( const char *soname, const char *symbol, unsigned newva
                 case R_ARM_ABS32:
                 case R_ARM_GLOB_DAT:
 
-                    return libhook_patch_address( reloc, newval );
+                    original = libhook_patch_address( reloc, newval );
 
                 default:
 
@@ -170,7 +172,9 @@ unsigned libhook_addhook( const char *soname, const char *symbol, unsigned newva
         }
     }
 
-    HOOKLOG( "Unable to find symbol in the reloc tables ( plt_rel_count=%u - rel_count=%u ).", si->plt_rel_count, si->rel_count );
+    if( original == 0 ){
+        HOOKLOG( "Unable to find symbol in the reloc tables ( plt_rel_count=%u - rel_count=%u ).", si->plt_rel_count, si->rel_count );
+    }
 
-    return 0;
+    return original;
 }
