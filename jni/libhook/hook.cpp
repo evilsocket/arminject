@@ -75,7 +75,7 @@ ld_modules_t libhook_get_modules() {
     }
 
     while( fgets( buffer, sizeof(buffer), fp ) ) {
-        if( strstr( buffer, "r-xp" ) && strstr( buffer, ".so" ) ){
+        if( strstr( buffer, "r-xp" ) ){
             address = (uintptr_t)strtoul( buffer, NULL, 16 );
             name    = strrchr( buffer, ' ' ) + 1;
             name.resize( name.size() - 1 );
