@@ -50,6 +50,8 @@ class ADB:
 
     def set_selinux_level( self, level ):
         self.sh( "su 0 setenforce %d" % level )
+        if level == 0:
+            self.sh( 'su -c supolicy --live "allow s_untrusted_app shell_data_file file { execute execute_no_trans }"' )
 
     def get_pid( self, proc ):
         return int( self.sudo( "pidof %s" % proc ).strip() )
