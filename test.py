@@ -29,8 +29,8 @@ from pyadb.adb import ADB
 try:
     adb = ADB()
 
-    process  = "com.android.chrome"
-    activity = "com.google.android.apps.chrome.Main"
+    process  = "com.instagram.android"
+    activity = ".activity.MainTabActivity"
 
     print "@ Pushing files to /data/local/tmp ..."
 
