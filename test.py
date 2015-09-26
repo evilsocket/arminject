@@ -45,6 +45,8 @@ try:
     adb.set_selinux_level( 0 )
     adb.clear_log()
 
+    adb.sh("am kill %s" % process)
+    adb.sh("pm clear %s" % process)
     pid = adb.start_activity( process, activity )
 
     print "@ Injection into PID %d starting ..." % pid
