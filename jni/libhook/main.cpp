@@ -67,8 +67,8 @@ void __attribute__ ((constructor)) libhook_main()
     HOOKLOG( "Installing %u hooks.", NHOOKS );
 
     for( ld_modules_t::const_iterator i = modules.begin(), e = modules.end(); i != e; ++i ){
-        // don't hook ourself :P
-        if( i->name.find( "libhook.so" ) == std::string::npos ) {
+        // only hook what is needed
+        if( i->name.find( "libstrings.so" ) != std::string::npos ) {
             HOOKLOG( "[0x%X] Hooking %s ...", i->address, i->name.c_str() );
 
             for( size_t j = 0; j < NHOOKS; ++j ) {

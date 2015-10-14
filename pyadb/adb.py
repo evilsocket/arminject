@@ -54,7 +54,8 @@ class ADB:
             self.sh( 'su -c supolicy --live "allow s_untrusted_app shell_data_file file { execute execute_no_trans }"' )
 
     def get_pid( self, proc ):
-        return int( self.sudo( "pidof %s" % proc ).strip() )
+        return int( self.sh('set `ps|grep %s`; echo $2' % proc).strip() )
+        #return int( self.sudo( "pidof %s" % proc ).strip() )
 
     def start_activity( self, proc, activity ):
         self.pkill( proc )
