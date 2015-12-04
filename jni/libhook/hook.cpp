@@ -71,14 +71,13 @@ static uint32_t  gnuhash(const char *_name) {
     return h;
 }
 
-static ElfW(Sym) *soinfo_gnu_lookup(struct soinfo *si, uint32_t hash, const char *name) 
+static Elf32_Sym *soinfo_gnu_lookup(struct soinfo *si, uint32_t hash, const char *name) 
 {
     uint32_t h2 = hash >> si->gnu_shift2_;
 
-    uint32_t bloom_mask_bits = sizeof(ElfW(Addr)) * 8;
+    uint32_t bloom_mask_bits = sizeof(uintptr_t) * 8;
     uint32_t word_num = (hash / bloom_mask_bits) & si->gnu_maskwords_;
-    ElfW(Addr) bloom_word = si->gnu_bloom_filter_[word_num];
-    ElfW(Sym) *symbol_index = 0;
+    uintptr_t bloom_word = si->gnu_bloom_filter_[word_num];
 
     if ((1 & (bloom_word >> (hash % bloom_mask_bits)) & (bloom_word >> (h2 % bloom_mask_bits))) == 0) {
         return NULL;
@@ -90,7 +89,7 @@ static ElfW(Sym) *soinfo_gnu_lookup(struct soinfo *si, uint32_t hash, const char
     }
 
     do {
-        ElfW(Sym)* s = si->symtab + n;
+        Elf32_Sym* s = si->symtab + n;
 
         if (((si->gnu_chain_[n] ^ hash) >> 1) == 0 &&
             strcmp(si->strtab + s->st_name, name) == 0) {
