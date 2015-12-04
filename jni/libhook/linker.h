@@ -34,6 +34,9 @@
 #define ANDROID_ARM_LINKER 1
 
 #define SOINFO_NAME_LEN 128
+#define FLAG_GNU_HASH 0x00000040
+
+typedef Elf32_Half Elf32_Versym;
 
 struct link_map
 {
@@ -42,6 +45,12 @@ struct link_map
     uintptr_t l_ld;
     struct link_map * l_next;
     struct link_map * l_prev;
+};
+
+struct soinfo_list_t
+{
+    void * head;
+    void * tail;
 };
 
 struct soinfo
@@ -85,8 +94,54 @@ struct soinfo
     unsigned refcount;
     struct link_map linkmap;
     int constructors_called;
-    Elf32_Addr gnu_relro_start;
-    unsigned gnu_relro_len;
+
+    unsigned *load_bias;
+
+#if !defined(__LP64__)
+  bool has_text_relocations;
+#endif
+  bool has_DT_SYMBOLIC;
+
+  // version >= 0
+  dev_t st_dev_;
+  ino_t st_ino_;
+
+  soinfo_list_t children_;
+  soinfo_list_t parents_;
+
+  // version >= 1
+  off64_t file_offset_;
+  uint32_t rtld_flags_;
+  uint32_t dt_flags_1_;
+  size_t strtab_size_;
+
+  // version >= 2
+  size_t gnu_nbucket_;
+  uint32_t *gnu_bucket_;
+  uint32_t *gnu_chain_;
+  uint32_t gnu_maskwords_;
+  uint32_t gnu_shift2_;
+  unsigned *gnu_bloom_filter_;
+
+  soinfo* local_group_root_;
+
+  uint8_t* android_relocs_;
+  size_t android_relocs_size_;
+
+  const char* soname_;
+  std::string realpath_;
+
+  const Elf32_Versym* versym_;
+
+  unsigned *verdef_ptr_;
+  size_t verdef_cnt_;
+
+  unsigned *verneed_ptr_;
+  size_t verneed_cnt_;
+
+  uint32_t target_sdk_version_;
+
+  std::vector<std::string> dt_runpath_;
 };
 
 #define R_ARM_ABS32      2

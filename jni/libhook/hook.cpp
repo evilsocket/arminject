@@ -62,6 +62,44 @@ static Elf32_Sym *soinfo_elf_lookup(struct soinfo *si, unsigned hash, const char
     return NULL;
 }
 
+static uint32_t  gnuhash(const char *_name) {
+    uint32_t h = 5381;
+    const uint8_t* name = reinterpret_cast<const uint8_t*>(_name);
+    while (*name != 0) {
+        h += (h << 5) + *name++; // h*33 + c = h + h * 32 + c = h + h << 5 + c
+    }
+    return h;
+}
+
+static Elf32_Sym *soinfo_gnu_lookup(struct soinfo *si, uint32_t hash, const char *name) 
+{
+    uint32_t h2 = hash >> si->gnu_shift2_;
+
+    uint32_t bloom_mask_bits = sizeof(uintptr_t) * 8;
+    uint32_t word_num = (hash / bloom_mask_bits) & si->gnu_maskwords_;
+    uintptr_t bloom_word = si->gnu_bloom_filter_[word_num];
+
+    if ((1 & (bloom_word >> (hash % bloom_mask_bits)) & (bloom_word >> (h2 % bloom_mask_bits))) == 0) {
+        return NULL;
+    }
+
+    uint32_t n = si->gnu_bucket_[hash % si->gnu_nbucket_];
+    if (n == 0) {
+        return NULL;
+    }
+
+    do {
+        Elf32_Sym* s = si->symtab + n;
+
+        if (((si->gnu_chain_[n] ^ hash) >> 1) == 0 &&
+            strcmp(si->strtab + s->st_name, name) == 0) {
+            return s;
+        }
+    } while ((si->gnu_chain_[n++] & 1) == 0);
+
+    return NULL;
+}
+
 ld_modules_t libhook_get_modules() {
     ld_modules_t modules;
     char buffer[1024] = {0};
@@ -124,8 +162,20 @@ unsigned libhook_addhook( const char *soname, const char *symbol, unsigned newva
         return 0;
     }
 
-    s = soinfo_elf_lookup( si, elfhash(symbol), symbol );
-    if( !s ){
+    if ((si->flags & FLAG_GNU_HASH) != 0)
+    {
+        s = soinfo_gnu_lookup(si, gnuhash(symbol), symbol);
+    }
+    else
+    {
+        s = soinfo_elf_lookup(si, elfhash(symbol), symbol);
+    }
+
+    if(!s &&
+       // GNU hash table doesn't contain relocation symbols.
+       // We still need to search the .rel.plt section for the symbol
+       (si->flags & FLAG_GNU_HASH) == 0)
+    {
         return 0;
     }
 
@@ -135,9 +185,10 @@ unsigned libhook_addhook( const char *soname, const char *symbol, unsigned newva
     for( i = 0, rel = si->plt_rel; i < si->plt_rel_count; ++i, ++rel ) {
         unsigned type  = ELF32_R_TYPE(rel->r_info);
         unsigned sym   = ELF32_R_SYM(rel->r_info);
-        unsigned reloc = (unsigned)(rel->r_offset + si->base);
+        unsigned reloc = (unsigned)(rel->r_offset + si->load_bias);
 
-        if( sym_offset == sym ) {
+        if( sym_offset == sym ||
+            strcmp(si->strtab + ((Elf32_Sym*)(si->symtab + sym))->st_name, symbol) == 0) {
             switch(type) {
                 case R_ARM_JUMP_SLOT:
 
@@ -156,9 +207,10 @@ unsigned libhook_addhook( const char *soname, const char *symbol, unsigned newva
     for( i = 0, rel = si->rel; i < si->rel_count; ++i, ++rel ) {
         unsigned type  = ELF32_R_TYPE(rel->r_info);
         unsigned sym   = ELF32_R_SYM(rel->r_info);
-        unsigned reloc = (unsigned)(rel->r_offset + si->base);
+        unsigned reloc = (unsigned)(rel->r_offset + si->load_bias);
 
-        if( sym_offset == sym ) {
+        if( sym_offset == sym ||
+            strcmp(si->strtab + ((Elf32_Sym*)(si->symtab + sym))->st_name, symbol) == 0) {
             switch(type) {
                 case R_ARM_ABS32:
                 case R_ARM_GLOB_DAT:
