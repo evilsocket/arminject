@@ -142,7 +142,7 @@ public:
         long ret;
 
         // make sure the buffer is word aligned
-        char *ptr = (char *)malloc(blen + blen % sizeof(size_t));
+        char *ptr = (char *)calloc(blen + blen % sizeof(size_t), 1);
         memcpy(ptr, buf, blen);
 
         for( i = 0; i < blen; i += sizeof(size_t) ){
@@ -220,7 +220,7 @@ public:
     unsigned long copyString( const char *s ) {
         unsigned long mem = call( _calloc, 2, strlen(s) + 1, 1 );
 
-        write( mem, (unsigned char *)s, strlen(s) );
+        write( mem, (unsigned char *)s, strlen(s) + 1 );
 
         return mem;
     }
